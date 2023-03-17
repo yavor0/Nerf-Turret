@@ -47,7 +47,7 @@
     </font>
    </property>
    <property name="text">
-    <string>COM 3</string>
+    <string>COM7</string>
    </property>
    <property name="maxLength">
     <number>30</number>
