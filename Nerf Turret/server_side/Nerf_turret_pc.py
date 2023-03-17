@@ -14,6 +14,7 @@ mutex = QMutex(QMutex.Recursive)
 class Thread(QThread):
     changePixmap = pyqtSignal(QImage)
     setVars = pyqtSignal(object, object, object, object)
+    send_pos = pyqtSignal(object)
 
     def run(self):
         global initBB, tracker
@@ -31,6 +32,7 @@ class Thread(QThread):
             else:
                 (success, box) = tracker.update(frame)
                 if success:
+                    self.send_pos.emit(box)
                     (x, y, w, h) = [int(v) for v in box]
                     cv2.rectangle(frame, (x, y), (x + w, y + h),
                                   (0, 255, 0), 2)
@@ -109,7 +111,6 @@ class ExtendedQLabel(QLabel):
             for (x1, y1, w, h) in self.faces:
                 print(x1, ev.x(), x1 + w, y1, ev.y(), y1 + h)
                 if ((ev.x() > x1 and ev.x() < x1 + w) and (ev.y() > y1 and ev.y() < y1 + h)):
-                    print("here")
                     self.initBB = (x1, y1, w, h)
                     self.tracker.init(self.frame, self.initBB)
                     tracker = self.tracker
@@ -134,6 +135,7 @@ class Nerf_App(QWidget):  # main window class
         # self.setFixedHeight(1200)
         self.th = Thread(self)
         self.th.changePixmap.connect(self.setImage)
+        self.th.send_pos.connect(self.send_camera_pos)
         self.label = ExtendedQLabel(self)
         self.th.setVars.connect(self.label.setVariables)
         self.th.setTerminationEnabled(True)
@@ -150,8 +152,8 @@ class Nerf_App(QWidget):  # main window class
         self.connected = False
         self.motor_on = False
         self.shoot = False
-        self.x = 0.5
-        self.y = 0.5
+        self.x = 1
+        self.y = 1
         self.on_pad = False
         self.ard_com = arduino_communication.com_ard(self)
 
@@ -159,10 +161,20 @@ class Nerf_App(QWidget):  # main window class
         self.bluetooth_button = self.ui.bluetooth_button
         self.motor_on_button = self.ui.motor_on_button
         self.mode_button = self.ui.mode_button
-        self.mode_button.setEnabled(True)  # testing
+        # self.mode_button.setEnabled(True)  # testing
         self.bluetooth_button.clicked.connect(self.connect_dial_box)
         self.motor_on_button.clicked.connect(self.motor_on_off)
         self.mode_button.clicked.connect(self.mode_change)
+
+    @pyqtSlot(object)
+    def send_camera_pos(self, box):
+        if box is not None and self.connected:
+            print(box)
+            self.x = int(self.remap(
+                box[0], 0, 253, 70, 550))
+            self.y = int(self.remap(
+                box[1], 0, 253, 70, 550))
+            self.set_arduino_message()
 
     @pyqtSlot(QImage)
     def setImage(self, image):
@@ -174,16 +186,17 @@ class Nerf_App(QWidget):  # main window class
             dial_box.show()
 
     def mode_change(self):  # change mode
-        # if self.connected:
-        self.mode = self.mode_button.isChecked()
-        self.pad_label.setEnabled(not self.mode)
-        self.ui.pad_label.hide() if self.mode else self.ui.pad_label.show()
-        self.label.setEnabled(self.mode)
-        self.label.show() if self.mode else self.label.hide()
+        if self.connected:
+            self.mode = self.mode_button.isChecked()
+            self.pad_label.setEnabled(not self.mode)
+            self.ui.pad_label.hide() if self.mode else self.ui.pad_label.show()
+            self.label.setEnabled(self.mode)
+            self.label.show() if self.mode else self.label.hide()
         # self.set_arduino_message()
 
     def set_ui(self):  # enable buttons and pad when conencted
         self.motor_on_button.setEnabled(True)
+        self.mode_button.setEnabled(True)
         self.pad_label.setEnabled(True)
         new_button_img = QIcon('GUI/bluetooth_connect.png')
         self.bluetooth_button.setIcon(new_button_img)
@@ -201,7 +214,6 @@ class Nerf_App(QWidget):  # main window class
         else:
             self.on_pad = False
             self.shoot = False
-
         self.set_arduino_message()
 
     def mousePressEvent(self, event):
