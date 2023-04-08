@@ -170,10 +170,13 @@ class Nerf_App(QWidget):  # main window class
     def send_camera_pos(self, box):
         if box is not None and self.connected:
             print(box)
+            new_box = self.remap_box(box[0], box[1], box[2], box[3])
             self.x = int(self.remap(
-                box[0], 0, 253, 70, 550))
+                new_box[0], 0, 253, 70, 550))
             self.y = int(self.remap(
-                box[1], 0, 253, 70, 550))
+                new_box[1], 0, 253, 70, 550))
+            
+            print(self.x, self.y)
             self.set_arduino_message()
 
     @pyqtSlot(QImage)
@@ -246,7 +249,37 @@ class Nerf_App(QWidget):  # main window class
 
         return remapped_val
 
-
+    def remap_box(self, x, y, w, h):
+        # Calculate aspect ratio of original matrix
+        aspect_ratio = 640 / 480
+        
+        # Determine whether original matrix is wider or taller than 600x600 matrix
+        if aspect_ratio > 1:
+            # Scale down width to 600 and height proportionally
+            new_w = 600
+            new_h = int(new_w / aspect_ratio)
+        else:
+            # Scale down height to 600 and width proportionally
+            new_h = 600
+            new_w = int(new_h * aspect_ratio)
+        
+        # Center the scaled matrix within 600x600 matrix
+        x_offset = int((600 - new_w) / 2)
+        y_offset = int((600 - new_h) / 2)
+        
+        # Map coordinates to scaled and centered matrix
+        new_x = int((x / 640) * new_w)
+        new_y = int((y / 480) * new_h)
+        
+        # Add offset to get final coordinates
+        final_x = new_x + x_offset
+        final_y = new_y + y_offset
+        
+        # Adjust width and height to match scaled and centered matrix
+        final_w = int((w / 640) * new_w)
+        final_h = int((h / 480) * new_h)
+        
+        return [final_x, final_y, final_w, final_h]
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = Nerf_App()
