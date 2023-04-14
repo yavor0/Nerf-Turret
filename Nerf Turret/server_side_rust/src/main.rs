@@ -1,78 +1,195 @@
+use iced::widget::image::Image;
+use iced::Event;
 use iced::{
     alignment::Horizontal,
-    widget::{Button, Container, Row, Text, Column},
-    Alignment, Element, Length, Sandbox, Settings,
+    alignment::Vertical,
+    widget::{text_input, Button, Column, Container, Row, Text},
+    Alignment, Application, Command, Element, Length, Settings, Theme,
 };
-
+use iced::{executor, mouse};
 use iced_aw::{Card, Modal};
 
+use iced::theme;
+
 fn main() -> iced::Result {
-    ModalExample::run(Settings::default())
+    TurretControls::run(Settings::default())
 }
 
 #[derive(Clone, Debug)]
 enum Message {
     OpenModal,
     CloseModal,
-    CancelButtonPressed,
     OkButtonPressed,
+    OnInputChanged(String),
+    MouseEvent(Event),
+    MotorButtonPressed,
+    SwitchModeButtonPressed,
 }
 
-#[derive(Default)]
-struct ModalExample {
+struct TurretControls {
     show_modal: bool,
-    last_message: Option<Message>,
+    port: String,
+    connect_button_image: String,
+    bluetooth_button_image: String,
+    motor_on_image: String,
+    motor_off_image: String,
+    motor_btn_pressed: bool,
+    swtch_mode_btn_pressed: bool,
+    pad: String,
 }
 
-impl Sandbox for ModalExample {
-    type Message = Message;
+impl Default for TurretControls {
+    fn default() -> TurretControls {
+        TurretControls {
+            show_modal: false,
+            port: String::from("COM9"),
+            connect_button_image: String::from("./GUI/connect_button.png"),
+            bluetooth_button_image: String::from("./GUI/not_connect.png"),
+            motor_on_image: String::from("./GUI/motor_on.png"),
+            motor_off_image: String::from("./GUI/motor_off.png"),
+            motor_btn_pressed: false,
+            swtch_mode_btn_pressed: false,
+            pad: String::from("./GUI/pad-pc.png"),
+        }
+    }
+}
 
-    fn new() -> Self {
-        Self::default()
+impl Application for TurretControls {
+    type Message = Message;
+    type Theme = Theme;
+    type Executor = executor::Default;
+    type Flags = ();
+
+    fn new(_flags: ()) -> (TurretControls, Command<Message>) {
+        (TurretControls::default(), Command::none())
     }
 
     fn title(&self) -> String {
-        String::from("Modal example")
+        String::from("Nerf turret controller")
     }
 
-    fn update(&mut self, message: Self::Message) {
+    fn theme(&self) -> Theme {
+        Self::Theme::Dark
+    }
+
+    fn update(&mut self, message: Self::Message) -> Command<Message> {
         match message {
             Message::OpenModal => self.show_modal = true,
             Message::CloseModal => self.show_modal = false,
-            Message::CancelButtonPressed => self.show_modal = false,
-            Message::OkButtonPressed => self.show_modal = false,
+            Message::OkButtonPressed => {
+                self.show_modal = false;
+                //ard connect
+                println!("Port number: {}", self.port);
+            }
+            Message::MouseEvent(event) => match event {
+                Event::Mouse(mouse_event) => match mouse_event {
+                    mouse::Event::CursorMoved { position } => {
+                        println!("Mouse cursor moved : {}, {}", position.x, position.y);
+                    }
+                    _ => {}
+                },
+                _ => {}
+            },
+            Message::OnInputChanged(port) => self.port = port,
+            Message::MotorButtonPressed => {
+                if self.motor_btn_pressed {
+                    self.motor_btn_pressed = false;
+                    self.motor_off_image = String::from("./GUI/motor_on.png");
+                } else {
+                    self.motor_btn_pressed = true;
+                    self.motor_off_image = String::from("./GUI/motor_off.png");
+                }
+            }
+            Message::SwitchModeButtonPressed => {
+                if self.swtch_mode_btn_pressed {
+                    self.swtch_mode_btn_pressed = false;
+                    self.motor_on_image = String::from("./GUI/motor_on.png");
+                } else {
+                    self.swtch_mode_btn_pressed = true;
+                    self.motor_on_image = String::from("./GUI/motor_off.png");
+                }
+            }
         }
-        self.last_message = Some(message)
+        // self.last_message = Some(message);
+
+        return Command::none();
+    }
+
+    fn subscription(&self) -> iced::Subscription<Self::Message> {
+        iced::subscription::events().map(Message::MouseEvent)
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
         let content = Container::new(
-            Column::new()
+            Row::new()
                 .spacing(10)
                 .align_items(Alignment::Center)
-                .push(Button::new(Text::new("Open modal!")).on_press(Message::OpenModal))
-
-        );
-
+                .push(
+                    Column::new()
+                        .spacing(10)
+                        .align_items(Alignment::Center)
+                        .push(
+                            Button::new(
+                                Image::new(self.bluetooth_button_image.as_str())
+                                    .width(64)
+                                    .height(64),
+                            )
+                            .on_press(Message::OpenModal)
+                            .style(theme::Button::Text),
+                        )
+                        .push(
+                            Button::new(
+                                Image::new(self.motor_off_image.as_str())
+                                    .width(64)
+                                    .height(64),
+                            )
+                            .on_press(Message::MotorButtonPressed)
+                            .style(theme::Button::Text),
+                        )
+                        .push(
+                            Button::new(
+                                Image::new(self.motor_off_image.as_str())
+                                    .width(64)
+                                    .height(64),
+                            )
+                            .on_press(Message::MotorButtonPressed)
+                            .style(theme::Button::Text),
+                        ),
+                )
+                .push(Image::new(self.pad.as_str()).width(600).height(600)),
+        )
+        .align_x(Horizontal::Center)
+        .align_y(Vertical::Center)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .center_x()
+        .center_y();
         Modal::new(self.show_modal, content, || {
             Card::new(
-                Text::new("My modal"),
-                Text::new("This is a modal!"), //Text::new("Zombie ipsum reversus ab viral inferno, nam rick grimes malum cerebro. De carne lumbering animata corpora quaeritis. Summus brains sit​​, morbo vel maleficia? De apocalypsi gorger omero undead survivor dictum mauris. Hi mindless mortuis soulless creaturas, imo evil stalking monstra adventus resi dentevil vultus comedat cerebella viventium. Qui animated corpse, cricket bat max brucks terribilem incessu zomby. The voodoo sacerdos flesh eater, suscitat mortuos comedere carnem virus. Zonbi tattered for solum oculi eorum defunctis go lum cerebro. Nescio brains an Undead zombies. Sicut malus putrid voodoo horror. Nigh tofth eliv ingdead.")
-            )
-            .foot(
-                Row::new()
+                Text::new("Port selection"),
+                Column::new()
                     .spacing(10)
                     .padding(5)
                     .width(Length::Fill)
                     .push(
-                        Button::new(Text::new("Cancel").horizontal_alignment(Horizontal::Center))
-                            .width(Length::Fill)
-                            .on_press(Message::CancelButtonPressed),
-                    )
+                        text_input::TextInput::new("Enter port number", &self.port)
+                            .on_input(|port| Message::OnInputChanged(port)),
+                    ),
+            )
+            .foot(
+                Row::new()
+                    .spacing(10)
+                    .align_items(Alignment::Center)
+                    .padding(5)
+                    .width(Length::Fill)
                     .push(
-                        Button::new(Text::new("Ok").horizontal_alignment(Horizontal::Center))
-                            .width(Length::Fill)
-                            .on_press(Message::OkButtonPressed),
+                        Button::new(
+                            Image::new(self.connect_button_image.as_str())
+                                .width(128)
+                                .height(64),
+                        )
+                        .on_press(Message::OkButtonPressed)
+                        .style(theme::Button::Text),
                     ),
             )
             .max_width(300.0)
