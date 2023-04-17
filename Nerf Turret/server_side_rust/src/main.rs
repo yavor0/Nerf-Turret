@@ -1,15 +1,26 @@
+use std::sync::Arc;
+
 use iced::widget::image::Image;
 use iced::Event;
 use iced::{
     alignment::Horizontal,
     alignment::Vertical,
     widget::{text_input, Button, Column, Container, Row, Text},
-    Alignment, Application, Command, Element, Length, Settings, Theme,
+    Alignment, Application, Command, Element, Length, Settings, Theme
 };
 use iced::{executor, mouse};
 use iced_aw::{Card, Modal};
-
+use iced_native::image::Handle;
 use iced::theme;
+mod com_ard;
+use com_ard::ComArd;
+use opencv::{
+    prelude::*,
+    videoio::{self, VideoCapture},
+    imgproc::{COLOR_RGB2RGBA, cvt_color}
+};
+
+
 
 fn main() -> iced::Result {
     TurretControls::run(Settings::default())
@@ -23,7 +34,7 @@ enum Message {
     OnInputChanged(String),
     MouseEvent(Event),
     MotorButtonPressed,
-    SwitchModeButtonPressed,
+    SwitchModeButtonPressed
 }
 
 struct TurretControls {
@@ -32,24 +43,54 @@ struct TurretControls {
     connect_button_image: String,
     bluetooth_button_image: String,
     motor_on_image: String,
-    motor_off_image: String,
+    motor_btn_image: String,
     motor_btn_pressed: bool,
     swtch_mode_btn_pressed: bool,
     pad: String,
+    x: i32,
+    y: i32,
+    ard: ComArd,
+    cap: VideoCapture,
+    image_handle: Handle,
+
 }
 
 impl Default for TurretControls {
     fn default() -> TurretControls {
+        let mut cap = VideoCapture::new(1, videoio::CAP_ANY).unwrap();
+        let opened = cap.is_opened().unwrap();
+        if !opened {
+            panic!("Unable to open default camera!");
+        }
+        cap.set(videoio::CAP_PROP_FRAME_WIDTH, 640.0).unwrap();
+        cap.set(videoio::CAP_PROP_FRAME_HEIGHT, 480.0).unwrap();
+
+        let mut mat = Mat::default();
+        cap.read(&mut mat).unwrap();
+        let mut gray = Mat::default();
+        cvt_color(&mat, &mut gray, COLOR_RGB2RGBA, 0).unwrap();
+        let gray_data = gray.data();
+        println!("{} {} {} {} ", gray.cols(), gray.rows(), gray.channels(), gray.total());
+        let gray_slice = unsafe { std::slice::from_raw_parts(gray_data, (gray.total() * gray.channels() as usize) as usize) };
+        // let image_handle = Handle::from_pixels(gray.cols() as u32, gray.rows() as u32, gray_slice);
+        let image_handle = Handle::from_memory(gray_slice.to_vec());
+        println!("Image handle: {:?}", image_handle);
+
         TurretControls {
             show_modal: false,
             port: String::from("COM9"),
             connect_button_image: String::from("./GUI/connect_button.png"),
             bluetooth_button_image: String::from("./GUI/not_connect.png"),
             motor_on_image: String::from("./GUI/motor_on.png"),
-            motor_off_image: String::from("./GUI/motor_off.png"),
+            motor_btn_image: String::from("./GUI/motor_off_blocked.png"),
             motor_btn_pressed: false,
             swtch_mode_btn_pressed: false,
-            pad: String::from("./GUI/pad-pc.png"),
+            pad: String::from("./GUI/pad-pc_blocked.png"),
+            x: 0,
+            y: 0,
+            ard: ComArd::new(),
+            cap: cap,
+            image_handle: image_handle,
         }
     }
 }
@@ -73,6 +114,14 @@ impl Application for TurretControls {
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Message> {
+        // let mut mat = Mat::default();
+        // self.cap.read(&mut mat).unwrap();
+        // let mut gray = Mat::default();
+        // cvt_color(&mat, &mut gray, COLOR_RGB2BGRA, 0).unwrap();
+        // let gray_data = mat.data();
+        // let gray_slice = unsafe { std::slice::from_raw_parts(gray_data, (gray.total() * gray.channels() as usize) as usize) };
+        // self.image_handle = Handle::from_pixels(gray.cols() as u32, gray.rows() as u32, gray_slice);
+        // println!("Image handle: {:?}", self.image_handle);
         match message {
             Message::OpenModal => self.show_modal = true,
             Message::CloseModal => self.show_modal = false,
@@ -94,10 +143,10 @@ impl Application for TurretControls {
             Message::MotorButtonPressed => {
                 if self.motor_btn_pressed {
                     self.motor_btn_pressed = false;
-                    self.motor_off_image = String::from("./GUI/motor_on.png");
+                    self.motor_btn_image = String::from("./GUI/motor_on.png");
                 } else {
                     self.motor_btn_pressed = true;
-                    self.motor_off_image = String::from("./GUI/motor_off.png");
+                    self.motor_btn_image = String::from("./GUI/motor_off.png");
                 }
             }
             Message::SwitchModeButtonPressed => {
@@ -139,7 +188,7 @@ impl Application for TurretControls {
                         )
                         .push(
                             Button::new(
-                                Image::new(self.motor_off_image.as_str())
+                                Image::new(self.motor_btn_image.as_str())
                                     .width(64)
                                     .height(64),
                             )
@@ -148,7 +197,7 @@ impl Application for TurretControls {
                         )
                         .push(
                             Button::new(
-                                Image::new(self.motor_off_image.as_str())
+                                Image::new(self.motor_btn_image.as_str())
                                     .width(64)
                                     .height(64),
                             )
@@ -156,7 +205,7 @@ impl Application for TurretControls {
                             .style(theme::Button::Text),
                         ),
                 )
-                .push(Image::new(self.pad.as_str()).width(600).height(600)),
+                .push(Image::new(self.image_handle.clone()).width(Length::Fill).height(Length::Fill)),
         )
         .align_x(Horizontal::Center)
         .align_y(Vertical::Center)
