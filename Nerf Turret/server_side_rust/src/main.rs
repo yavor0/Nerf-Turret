@@ -73,6 +73,7 @@ impl Default for TurretControls {
         println!("{} {} {} {} ", gray.cols(), gray.rows(), gray.channels(), gray.total());
         let gray_slice = unsafe { std::slice::from_raw_parts(gray_data, (gray.total() * gray.channels() as usize) as usize) };
         // let image_handle = Handle::from_pixels(gray.cols() as u32, gray.rows() as u32, gray_slice);
+
         let image_handle = Handle::from_memory(gray_slice.to_vec());
         println!("Image handle: {:?}", image_handle);
 
@@ -114,14 +115,19 @@ impl Application for TurretControls {
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Message> {
-        // let mut mat = Mat::default();
-        // self.cap.read(&mut mat).unwrap();
-        // let mut gray = Mat::default();
-        // cvt_color(&mat, &mut gray, COLOR_RGB2BGRA, 0).unwrap();
-        // let gray_data = mat.data();
-        // let gray_slice = unsafe { std::slice::from_raw_parts(gray_data, (gray.total() * gray.channels() as usize) as usize) };
-        // self.image_handle = Handle::from_pixels(gray.cols() as u32, gray.rows() as u32, gray_slice);
-        // println!("Image handle: {:?}", self.image_handle);
+        let opened = self.cap.is_opened().unwrap();
+        if opened  && self.show_modal == true{
+            let mut mat = Mat::default();
+            self.cap.read(&mut mat).unwrap();
+            let mut gray = Mat::default();
+            cvt_color(&mat, &mut gray, COLOR_RGB2RGBA, 0).unwrap();
+            let gray_data = mat.data();
+            let gray_slice = unsafe { std::slice::from_raw_parts(gray_data, (gray.total() * gray.channels() as usize) as usize) };
+            
+            self.image_handle = Handle::from_pixels(gray.cols() as u32, gray.rows()  as u32, gray_slice);
+            // println!("Image handle: {:?}", self.image_handle);
+        }
+
         match message {
             Message::OpenModal => self.show_modal = true,
             Message::CloseModal => self.show_modal = false,

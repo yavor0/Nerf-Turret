@@ -5,7 +5,7 @@ from PyQt5.QtCore import QThread, QMutex, Qt, pyqtSignal, pyqtSlot
 import arduino_communication
 import cv2
 import sys
-
+import time
 initBB = None
 tracker = cv2.TrackerKCF_create()
 mutex = QMutex(QMutex.Recursive)
@@ -130,6 +130,8 @@ class Nerf_App(QWidget):  # main window class
         self.title = 'PyQt5-Video'
         self.left = 50
         self.top = 50
+        self.time_on = 0
+        self.time_start = 0
         self.setWindowTitle(self.title)
         self.setFixedWidth(1600)
         # self.setFixedHeight(1200)
@@ -174,6 +176,15 @@ class Nerf_App(QWidget):  # main window class
             new_y = int(box[1] + box[3] / 2)
             # print(new_x, new_y)
             if (new_x + box[2] / 2 >= 320 and new_x - box[2] / 2 <= 320 and new_y + box[3] / 2 >= 240 and new_y - box[3] / 2 <= 240):
+                if not self.shoot:
+                    if self.motor_on:
+                        self.time_on = time.time() - self.time_start
+                    if self.time_on > 1.5:
+                        self.shoot = True
+                        self.set_arduino_message()
+                else:
+                    self.shoot = False
+                    self.set_arduino_message()
                 return
             if (new_x > 320):
                 self.x = abs(
@@ -187,14 +198,7 @@ class Nerf_App(QWidget):  # main window class
             else:
                 self.y = abs(
                     self.y - int(self.remap(new_y, 0, 253, 0, 480 * 4) / 10))
-            # self.x = int(self.remap(
-            #     box[0], 0, 253, 0, 640))
-            # self.y = int(self.remap(
-            #     box[1], 0, 253, 0, 480))
-            # print(self.x, self.y)
-            # if self.send_message % 10 == 0:
             self.set_arduino_message()
-            # self.send_message += 1
 
     @pyqtSlot(QImage)
     def setImage(self, image):
@@ -224,6 +228,11 @@ class Nerf_App(QWidget):  # main window class
     def motor_on_off(self):  # turn motor on/off
         if self.connected:
             self.motor_on = self.motor_on_button.isChecked()
+            if self.motor_on:
+                self.time_on = 0
+                self.time_start = time.time()
+            else:
+                self.time_on = 0
             self.set_arduino_message()
 
     def mouseMoveEvent(self, event):
