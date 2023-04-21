@@ -25,6 +25,7 @@ class Thread(QThread):
             ret, frame = cap.read()
             gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
             faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+            mutex.lock()
             if initBB is None:
                 for (x, y, w, h) in faces:
                     cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
@@ -39,6 +40,7 @@ class Thread(QThread):
                 else:
                     tracker = cv2.TrackerKCF_create()
                     initBB = None
+            mutex.unlock()
             if ret:
                 # https://stackoverflow.com/a/55468544/6622587
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -88,11 +90,10 @@ class ExtendedQLabel(QLabel):
 
     def __init__(self, parent):
         QLabel.__init__(self, parent)
-
-    initBB = None
-    tracker = None
-    faces = None
-    frame = None
+        self.initBB = None
+        self.tracker = None
+        self.faces = None
+        self.frame = None
 
     def closeEvent(self, event):
         self.th.stop()
@@ -105,8 +106,8 @@ class ExtendedQLabel(QLabel):
         self.frame = frame
 
     def mouseReleaseEvent(self, ev):
-        global initBB, tracker
         mutex.lock()
+        global initBB, tracker
         if ev.button() == 1 and initBB is None:
             for (x1, y1, w, h) in self.faces:
                 if ((ev.x() > x1 and ev.x() < x1 + w) and (ev.y() > y1 and ev.y() < y1 + h)):
@@ -134,7 +135,6 @@ class Nerf_App(QWidget):  # main window class
         self.time_start = 0
         self.setWindowTitle(self.title)
         self.setFixedWidth(1600)
-        # self.setFixedHeight(1200)
         self.th = Thread(self)
         self.th.changePixmap.connect(self.setImage)
         self.th.send_pos.connect(self.send_camera_pos)
