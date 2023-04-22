@@ -40,7 +40,7 @@
    </property>
    <property name="geometry">
     <rect>
-     <x>620</x>
+     <x>750</x>
      <y>190</y>
      <width>141</width>
      <height>141</height>
@@ -97,7 +97,7 @@
   <widget class="QPushButton" name="bluetooth_button">
    <property name="geometry">
     <rect>
-     <x>620</x>
+     <x>750</x>
      <y>40</y>
      <width>141</width>
      <height>141</height>
@@ -141,7 +141,7 @@
     </property>
     <property name="geometry">
     <rect>
-      <x>620</x>
+      <x>750</x>
       <y>335</y>
       <width>141</width>
       <height>141</height>

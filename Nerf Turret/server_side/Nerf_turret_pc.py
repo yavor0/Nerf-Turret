@@ -9,24 +9,33 @@ import time
 initBB = None
 tracker = cv2.TrackerKCF_create()
 mutex = QMutex(QMutex.Recursive)
-
-
+video = True
+# auto_mode = False
 class Thread(QThread):
     changePixmap = pyqtSignal(QImage)
-    setVars = pyqtSignal(object, object, object, object)
+    setVars = pyqtSignal(object, object)
     send_pos = pyqtSignal(object)
 
     def run(self):
-        global initBB, tracker
+        global initBB, tracker, mutex
         face_cascade = cv2.CascadeClassifier(
             'lbpcascade_frontalface_improved.xml')
-        cap = cv2.VideoCapture(1)
-        while (True):
+        cap = None
+        try:
+            cap = cv2.VideoCapture(0)
+        except:
+            return
+        if not cap.isOpened():
+            return
+        print(cap.isOpened())
+        while video:
             ret, frame = cap.read()
-            gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
             mutex.lock()
             if initBB is None:
+                gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+                faces = face_cascade.detectMultiScale(gray, 1.05, 3)
+                # if auto_mode:
+                    
                 for (x, y, w, h) in faces:
                     cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
             else:
@@ -35,8 +44,7 @@ class Thread(QThread):
                     self.send_pos.emit(box)
                     (x, y, w, h) = [int(v) for v in box]
                     cv2.rectangle(frame, (x, y), (x + w, y + h),
-                                  (0, 255, 0), 2)
-
+                                (0, 255, 0), 2)
                 else:
                     tracker = cv2.TrackerKCF_create()
                     initBB = None
@@ -53,9 +61,10 @@ class Thread(QThread):
                 # cv2.setMouseCallback('PyQt5-Video', onMouse)
                 mutex.lock()
                 self.changePixmap.emit(p)
-                self.setVars.emit(initBB, tracker, faces, frame)
+                self.setVars.emit(faces, frame)
                 mutex.unlock()
         cap.release()
+
 
 
 class connect_dial_box(QWidget):  # dialog box class
@@ -98,16 +107,19 @@ class ExtendedQLabel(QLabel):
     def closeEvent(self, event):
         self.th.stop()
 
-    @pyqtSlot(object, object, object, object)
-    def setVariables(self, initBB, tracker, faces, frame):
+    @pyqtSlot(object, object)
+    def setVariables(self, faces, frame):
+        global initBB, tracker, mutex
+        mutex.lock()
         self.initBB = initBB
         self.tracker = tracker
+        mutex.unlock()
         self.faces = faces
         self.frame = frame
 
     def mouseReleaseEvent(self, ev):
+        global initBB, tracker, mutex
         mutex.lock()
-        global initBB, tracker
         if ev.button() == 1 and initBB is None:
             for (x1, y1, w, h) in self.faces:
                 if ((ev.x() > x1 and ev.x() < x1 + w) and (ev.y() > y1 and ev.y() < y1 + h)):
@@ -134,7 +146,7 @@ class Nerf_App(QWidget):  # main window class
         self.time_on = 0
         self.time_start = 0
         self.setWindowTitle(self.title)
-        self.setFixedWidth(1600)
+        self.setFixedWidth(900)
         self.th = Thread(self)
         self.th.changePixmap.connect(self.setImage)
         self.th.send_pos.connect(self.send_camera_pos)
@@ -155,8 +167,8 @@ class Nerf_App(QWidget):  # main window class
         self.motor_on = False
         self.shoot = False
         self.send_message = 0
-        self.x = 128
-        self.y = 128
+        self.x = 1
+        self.y = 1
         self.on_pad = False
         self.ard_com = arduino_communication.com_ard(self)
 
@@ -179,11 +191,13 @@ class Nerf_App(QWidget):  # main window class
                 if not self.shoot:
                     if self.motor_on:
                         self.time_on = time.time() - self.time_start
-                    if self.time_on > 1.5:
+                    if self.time_on > 3:
                         self.shoot = True
                         self.set_arduino_message()
                 else:
                     self.shoot = False
+                    self.time_on = 0
+                    self.time_start = time.time()
                     self.set_arduino_message()
                 return
             if (new_x > 320):
@@ -259,7 +273,6 @@ class Nerf_App(QWidget):  # main window class
 
     def set_arduino_message(self):
         if self.connected:
-            print(self.x, self.y)
             if (self.x > 253):
                 self.x = 253
             elif (self.x < 0):
@@ -282,11 +295,17 @@ class Nerf_App(QWidget):  # main window class
             remapped_val = new_range_min
 
         return remapped_val
-
-
+    def closeEvent(self, event):
+        global video
+        mutex.lock()
+        video = False
+        mutex.unlock()
+        while not self.th.isFinished():
+            pass
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = Nerf_App()
     app.exec_()
     print("Exiting")
     sys.exit(app.exec_())
+    print("Exited")
