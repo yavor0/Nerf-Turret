@@ -1,9 +1,10 @@
-#include <Servo.h>
 
+#include <ServoEasing.h>
+#include "ServoEasing.hpp"
 //-----Declare servos and variables
 Servo recoil_servo;
-Servo pan_servo;
-Servo tilt_servo;
+ServoEasing  pan_servo;
+ServoEasing  tilt_servo;
 
 const byte pan_limit_1 = 0;
 const byte pan_limit_2 = 180;
@@ -47,14 +48,14 @@ void setup()
 
   //-----attaches servo to pins
   recoil_servo.attach(9);
-  pan_servo.attach(10);
-  tilt_servo.attach(11);
+  pan_servo.attach(10, 0);
+  tilt_servo.attach(11, 0);
 
   //-----starting sequence
   recoil_servo.write(recoil_rest);
-  pan_servo.write(90);
+  pan_servo.easeTo(90, 40);
   delay(1000);
-  tilt_servo.write(105);
+  tilt_servo.easeTo(105, 40);
 
 
   Serial.begin(9600);  // begin serial communication
@@ -114,9 +115,9 @@ void getDataFromPC() {
 void move_servo() {
   
   byte pan_servo_position = map(inputBuffer[0], 0, 253, pan_limit_2, pan_limit_1);//convert inputbuffer value to servo position value
-  pan_servo.write(pan_servo_position); //set pan servo position
+  pan_servo.easeTo(pan_servo_position, 40); //set pan servo position
   byte tilt_servo_position = map(inputBuffer[1], 0 , 253, tilt_limit_2, tilt_limit_1); //convert inputbuffer value to servo position value
-  tilt_servo.write(tilt_servo_position); //set pan servo position
+  tilt_servo.easeTo(tilt_servo_position, 40); //set pan servo position
 }
 
 //8===========================D
