@@ -40,7 +40,7 @@
    </property>
    <property name="geometry">
     <rect>
-     <x>620</x>
+     <x>750</x>
      <y>190</y>
      <width>141</width>
      <height>141</height>
@@ -97,7 +97,7 @@
   <widget class="QPushButton" name="bluetooth_button">
    <property name="geometry">
     <rect>
-     <x>620</x>
+     <x>750</x>
      <y>40</y>
      <width>141</width>
      <height>141</height>
@@ -134,6 +134,66 @@
    <property name="flat">
     <bool>true</bool>
    </property>
+  </widget>
+  <widget class="QPushButton" name="mode_button">
+    <property name="enabled">
+    <bool>false</bool>
+    </property>
+    <property name="geometry">
+    <rect>
+      <x>750</x>
+      <y>335</y>
+      <width>141</width>
+      <height>141</height>
+    </rect>
+    </property>
+    <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+    </sizepolicy>
+    </property>
+    <property name="focusPolicy">
+    <enum>Qt::StrongFocus</enum>
+    </property>
+    <property name="contextMenuPolicy">
+    <enum>Qt::DefaultContextMenu</enum>
+    </property>
+    <property name="acceptDrops">
+    <bool>false</bool>
+    </property>
+    <property name="autoFillBackground">
+    <bool>false</bool>
+    </property>
+    <property name="styleSheet">
+    <string notr="true"> QPushButton:flat {   border: none; }</string>
+    </property>
+    <property name="text">
+    <string/>
+    </property>
+    <property name="icon">
+    <iconset>
+      <normaloff>motor_off.png</normaloff>
+      <normalon>motor_on.png</normalon>motor_off.png</iconset>
+    </property>
+    <property name="iconSize">
+    <size>
+      <width>120</width>
+      <height>120</height>
+    </size>
+    </property>
+    <property name="checkable">
+    <bool>true</bool>
+    </property>
+    <property name="autoDefault">
+    <bool>false</bool>
+    </property>
+    <property name="default">
+    <bool>false</bool>
+    </property>
+    <property name="flat">
+    <bool>true</bool>
+    </property>
   </widget>
   <widget class="QLabel" name="pad_label">
    <property name="enabled">
